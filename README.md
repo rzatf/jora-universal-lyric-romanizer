@@ -33,5 +33,9 @@
    python jora_gui.py
 
 ## 📦 Building Executable (.exe)
-Run the provided `build.bat` or execute PyInstaller manually:
-pyinstaller --noconsole --onefile --name "JORA" --icon=JORA_logo.ico --add-data "JORA_logo.ico;." --add-data "C:\Users\ASUS\AppData\Roaming\Python\Python314\site-packages\pykakasi;pykakasi" jora_gui.py
+
+Simply run the automated build script on Windows:
+build.bat
+
+Or execute PyInstaller manually:
+pyinstaller --noconsole --onefile --name "JORA" --icon=JORA_logo.ico --add-data "JORA_logo.ico;." jora_gui.py
