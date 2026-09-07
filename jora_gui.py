@@ -33,25 +33,28 @@ def romanize_text(text):
         return ""
 
     # Check for Korean (Hangul)
-    # Deteksi teks Bahasa Korea
+    # Deteksi teks Bahasa Korea & bersihkan spasi ganda
     if re.search(r'[\uac00-\ud7a3]', text):
-        return Romanizer(text).romanize()
+        converted = Romanizer(text).romanize()
+        return re.sub(r'\s+', ' ', converted).strip()
 
     # Check for Japanese (Kanji/Kana)
-    # Deteksi teks Bahasa Jepang
+    # Deteksi teks Bahasa Jepang & bersihkan spasi ganda
     if re.search(r'[\u3040-\u30ff]', text):
         converted = kks.convert(text)
-        return " ".join([item['hepburn'] for item in converted])
+        converted_str = " ".join([item['hepburn'] for item in converted])
+        return re.sub(r'\s+', ' ', converted_str).strip()
 
     # Check for Mandarin (Hanzi)
-    # Deteksi teks Bahasa Mandarin
+    # Deteksi teks Bahasa Mandarin & bersihkan spasi ganda
     if re.search(r'[\u4e00-\u9fff]', text):
         py_list = pinyin(text, style=Style.NORMAL)
-        return " ".join([item[0] for item in py_list])
+        converted_str = " ".join([item[0] for item in py_list])
+        return re.sub(r'\s+', ' ', converted_str).strip()
 
     # Fallback for English/Latin text
     # Teks latin/Inggris tetap dipertahankan
-    return text
+    return re.sub(r'\s+', ' ', text).strip()
 
 def unescape_and_romajify(input_text):
     if not input_text.strip():
@@ -87,7 +90,7 @@ def unescape_and_romajify(input_text):
         if match:
             timestamp, text = match.group(1), match.group(2)
             converted_text = romanize_text(text)
-            result_lines.append(f"{timestamp} {converted_text}")
+            result_lines.append(f"{timestamp} {converted_text}".strip())
         elif line.strip():
             result_lines.append(romanize_text(line))
         else:
@@ -99,14 +102,17 @@ def unescape_and_romajify(input_text):
         final_output.append("")
 
     final_output.extend(result_lines)
-    return "\n".join(final_output)
+    
+    # Use Windows standard newline (\r\n) for universal line-break compatibility
+    # Gunakan \r\n agar terpisah rapi di aplikasi Lyric Editor external
+    return "\r\n".join(final_output)
 
 # Handler for conversion process
 # Action listener untuk tombol proses
 def process_lyrics():
     raw_text = input_box.get("1.0", tk.END)
     if not raw_text.strip():
-        messagebox.showwarning("Peringatan", "Kolom input masih kosong!")
+        messagebox.showwarning("Warning", "Input field is empty!")
         return
     
     result = unescape_and_romajify(raw_text)
@@ -115,22 +121,25 @@ def process_lyrics():
     output_box.insert(tk.END, result)
     
     pyperclip.copy(result)
-    status_label.configure(text="● Berhasil dikonversi & disalin ke clipboard! (Ctrl+V)", text_color="#30D158")
+    status_label.configure(text="● Successfully converted & copied to clipboard! (Ctrl+V)", text_color="#30D158")
 
 # Handler for manual copy button
 # Action listener untuk tombol copy
 def copy_to_clipboard():
     final_text = output_box.get("1.0", tk.END).strip()
     if final_text:
-        pyperclip.copy(final_text)
-        status_label.configure(text="● Teks dari kolom kanan berhasil disalin!", text_color="#0A84FF")
+        # Re-ensure Windows newline formatting on copy
+        # Ensure format line break tetep \r\n pas dicopy manual
+        formatted_text = "\r\n".join(final_text.splitlines())
+        pyperclip.copy(formatted_text)
+        status_label.configure(text="● Output copied to clipboard!", text_color="#0A84FF")
 
 # Handler for clear button
 # Action listener untuk reset kolom
 def clear_all():
     input_box.delete("1.0", tk.END)
     output_box.delete("1.0", tk.END)
-    status_label.configure(text="● Siap", text_color="#8E8E93")
+    status_label.configure(text="● Ready", text_color="#8E8E93")
 
 # Main application window configuration
 # Setup jendela utama
@@ -195,11 +204,11 @@ content_container.columnconfigure(0, weight=1)
 content_container.columnconfigure(1, weight=1)
 content_container.rowconfigure(1, weight=1)
 
-# Section headers
-lbl_in = ctk.CTkLabel(content_container, text="INPUT (JSON / LRC)", font=FONT_LABEL, text_color=COLOR_TEXT_MAIN)
+# Section headers (English Interface)
+lbl_in = ctk.CTkLabel(content_container, text="INPUT (RAW JSON / ORIGINAL LRC)", font=FONT_LABEL, text_color=COLOR_TEXT_MAIN)
 lbl_in.grid(row=0, column=0, sticky="w", padx=2, pady=(0, 10))
 
-lbl_out = ctk.CTkLabel(content_container, text="OUTPUT FINAL (CLEAN / ROMANIZED)", font=FONT_LABEL, text_color=COLOR_TEXT_MAIN)
+lbl_out = ctk.CTkLabel(content_container, text="FINAL OUTPUT (CLEAN / ROMANIZED)", font=FONT_LABEL, text_color=COLOR_TEXT_MAIN)
 lbl_out.grid(row=0, column=1, sticky="w", padx=2, pady=(0, 10))
 
 # Dual text editors
@@ -216,7 +225,7 @@ output_box = ctk.CTkTextbox(
 )
 output_box.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=0)
 
-# Bottom action controls bar
+# Bottom action controls bar (English Interface)
 # Barisan tombol di bagian bawah
 btn_frame = ctk.CTkFrame(main_frame, fg_color=COLOR_BG, corner_radius=0)
 btn_frame.pack(fill=tk.X, padx=24, pady=(10, 20))
@@ -236,7 +245,7 @@ btn_copy = ctk.CTkButton(
 btn_copy.pack(side=tk.LEFT)
 
 btn_clear = ctk.CTkButton(
-    btn_frame, text="Clean", command=clear_all, 
+    btn_frame, text="Clear All", command=clear_all, 
     font=FONT_BTN, fg_color="#FF453A", hover_color="#D70015", text_color="white",
     corner_radius=10, height=48, width=130
 )
