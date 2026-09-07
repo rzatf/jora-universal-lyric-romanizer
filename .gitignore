@@ -1,0 +1,12 @@
+# PyInstaller outputs
+build/
+dist/
+sampah_temp/
+*.spec
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local temp files
+temp_white_logo.svg
