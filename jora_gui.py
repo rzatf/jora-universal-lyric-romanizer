@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import re
+import urllib.request
+import urllib.parse
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
@@ -33,27 +35,23 @@ def romanize_text(text):
         return ""
 
     # Check for Korean (Hangul)
-    # Deteksi teks Bahasa Korea & bersihkan spasi ganda
     if re.search(r'[\uac00-\ud7a3]', text):
         converted = Romanizer(text).romanize()
         return re.sub(r'\s+', ' ', converted).strip()
 
     # Check for Japanese (Kanji/Kana)
-    # Deteksi teks Bahasa Jepang & bersihkan spasi ganda
     if re.search(r'[\u3040-\u30ff]', text):
         converted = kks.convert(text)
         converted_str = " ".join([item['hepburn'] for item in converted])
         return re.sub(r'\s+', ' ', converted_str).strip()
 
     # Check for Mandarin (Hanzi)
-    # Deteksi teks Bahasa Mandarin & bersihkan spasi ganda
     if re.search(r'[\u4e00-\u9fff]', text):
         py_list = pinyin(text, style=Style.NORMAL)
         converted_str = " ".join([item[0] for item in py_list])
         return re.sub(r'\s+', ' ', converted_str).strip()
 
     # Fallback for English/Latin text
-    # Teks latin/Inggris tetap dipertahankan
     return re.sub(r'\s+', ' ', text).strip()
 
 def unescape_and_romajify(input_text):
@@ -63,7 +61,6 @@ def unescape_and_romajify(input_text):
     metadata_lines = []
 
     # Parse JSON structure if present, otherwise handle raw escaped strings
-    # Cek apakah input berbentuk JSON, kalau bukan langsung unescape string biasa
     try:
         data = json.loads(input_text)
         if isinstance(data, dict):
@@ -83,7 +80,6 @@ def unescape_and_romajify(input_text):
         input_text = input_text.replace(r"\n", "\n").replace(r'\"', '"').replace(r"\\", "\\")
 
     # Process lyrics line by line while preserving timestamps
-    # Proses baris per baris sambil menjaga timestamp .lrc tetap utuh
     result_lines = []
     for line in input_text.splitlines():
         match = re.match(r"^(\[\d{2}:\d{2}\.\d{2,3}\])(.*)", line)
@@ -102,13 +98,43 @@ def unescape_and_romajify(input_text):
         final_output.append("")
 
     final_output.extend(result_lines)
-    
-    # Use Windows standard newline (\r\n) for universal line-break compatibility
-    # Gunakan \r\n agar terpisah rapi di aplikasi Lyric Editor external
     return "\r\n".join(final_output)
 
+# Handler for online lyric search via LRCLIB API
+# Action listener untuk pencarian lirik online
+def search_lyrics():
+    track = entry_track.get().strip()
+    artist = entry_artist.get().strip()
+
+    if not track:
+        messagebox.showwarning("Warning", "Please enter at least a track title!")
+        return
+
+    status_label.configure(text="● Searching lyrics online...", text_color="#FF9F0A")
+    root.update()
+
+    try:
+        query = f"track_name={urllib.parse.quote(track)}"
+        if artist:
+            query += f"&artist_name={urllib.parse.quote(artist)}"
+
+        url = f"https://lrclib.net/api/get?{query}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        
+        with urllib.request.urlopen(req) as response:
+            if response.status == 200:
+                raw_json = response.read().decode('utf-8')
+                input_box.delete("1.0", tk.END)
+                input_box.insert(tk.END, raw_json)
+                status_label.configure(text="● Lyrics found & fetched! Click 'Process & Romanize'", text_color="#30D158")
+            else:
+                status_label.configure(text="● Song not found.", text_color="#FF453A")
+                messagebox.showinfo("Not Found", "Lyrics not found for the specified song.")
+    except Exception as e:
+        status_label.configure(text="● Search failed.", text_color="#FF453A")
+        messagebox.showerror("Error", f"Failed to fetch lyrics: {e}")
+
 # Handler for conversion process
-# Action listener untuk tombol proses
 def process_lyrics():
     raw_text = input_box.get("1.0", tk.END)
     if not raw_text.strip():
@@ -124,38 +150,33 @@ def process_lyrics():
     status_label.configure(text="● Successfully converted & copied to clipboard! (Ctrl+V)", text_color="#30D158")
 
 # Handler for manual copy button
-# Action listener untuk tombol copy
 def copy_to_clipboard():
     final_text = output_box.get("1.0", tk.END).strip()
     if final_text:
-        # Re-ensure Windows newline formatting on copy
-        # Ensure format line break tetep \r\n pas dicopy manual
         formatted_text = "\r\n".join(final_text.splitlines())
         pyperclip.copy(formatted_text)
         status_label.configure(text="● Output copied to clipboard!", text_color="#0A84FF")
 
 # Handler for clear button
-# Action listener untuk reset kolom
 def clear_all():
     input_box.delete("1.0", tk.END)
     output_box.delete("1.0", tk.END)
+    entry_track.delete(0, tk.END)
+    entry_artist.delete(0, tk.END)
     status_label.configure(text="● Ready", text_color="#8E8E93")
 
 # Main application window configuration
-# Setup jendela utama
 root = ctk.CTk()
 root.title("JORA - Universal JSON Unescaper & Lyric Romanizer")
-root.geometry("1150x760")
+root.geometry("1150x820")
 root.configure(fg_color="#141414")
 
 # Set app icon for window titlebar and taskbar
-# Pasang icon di titlebar dan taskbar
 icon_ico_path = resource_path("JORA_logo.ico")
 if os.path.exists(icon_ico_path):
     root.iconbitmap(icon_ico_path)
 
 # Color scheme definitions
-# Palette warna UI
 COLOR_HEADER = "#141414"
 COLOR_BG = "#1A1A1A"
 COLOR_CARD = "#242426"
@@ -163,20 +184,16 @@ COLOR_TEXT_MAIN = "#FFFFFF"
 COLOR_TEXT_MUTED = "#9A9A9E"
 
 # Typography config using Bahnschrift and Cascadia Code
-# Konfigurasi font UI
 FONT_TITLE = ctk.CTkFont(family="Bahnschrift SemiLight", size=24, weight="bold")
 FONT_SUBTITLE = ctk.CTkFont(family="Bahnschrift SemiLight", size=12)
 FONT_LABEL = ctk.CTkFont(family="Bahnschrift SemiLight", size=14, weight="bold")
-FONT_BTN = ctk.CTkFont(family="Bahnschrift", size=14)
+FONT_BTN = ctk.CTkFont(family="Bahnschrift", size=13)
 FONT_CODE = ctk.CTkFont(family="Cascadia Code", size=13)
 
 # Top header panel
-# Area header atas
 header_frame = ctk.CTkFrame(root, fg_color=COLOR_HEADER, corner_radius=0, height=85)
 header_frame.pack(fill=tk.X)
 
-# Load header icon
-# Muat logo di header UI
 if os.path.exists(icon_ico_path):
     try:
         logo_pil = Image.open(icon_ico_path)
@@ -192,8 +209,20 @@ title_label.pack(side=tk.LEFT, padx=(0, 12), pady=16)
 subtitle_label = ctk.CTkLabel(header_frame, text="Universal JSON Unescaper & Romanizer (JP / KR / CN / EN)", font=FONT_SUBTITLE, text_color=COLOR_TEXT_MUTED)
 subtitle_label.pack(side=tk.LEFT, pady=(22, 16))
 
+# Search Bar Panel
+search_frame = ctk.CTkFrame(root, fg_color="#1E1E20", corner_radius=10, height=50)
+search_frame.pack(fill=tk.X, padx=24, pady=(12, 0))
+
+entry_track = ctk.CTkEntry(search_frame, placeholder_text="Track Title (e.g. Night Dancer)", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
+entry_track.pack(side=tk.LEFT, padx=(12, 8), pady=8)
+
+entry_artist = ctk.CTkEntry(search_frame, placeholder_text="Artist Name (e.g. imase) [Optional]", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
+entry_artist.pack(side=tk.LEFT, padx=(0, 12), pady=8)
+
+btn_search = ctk.CTkButton(search_frame, text="🔍 Fetch Lyrics", command=search_lyrics, font=FONT_BTN, fg_color="#BF5AF2", hover_color="#A239D4", text_color="white", height=36, width=130, corner_radius=8)
+btn_search.pack(side=tk.LEFT, pady=8)
+
 # Main layout grid container
-# Container utama untuk text box input & output
 main_frame = ctk.CTkFrame(root, fg_color=COLOR_BG, corner_radius=0)
 main_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
@@ -204,7 +233,7 @@ content_container.columnconfigure(0, weight=1)
 content_container.columnconfigure(1, weight=1)
 content_container.rowconfigure(1, weight=1)
 
-# Section headers (English Interface)
+# Section headers
 lbl_in = ctk.CTkLabel(content_container, text="INPUT (RAW JSON / ORIGINAL LRC)", font=FONT_LABEL, text_color=COLOR_TEXT_MAIN)
 lbl_in.grid(row=0, column=0, sticky="w", padx=2, pady=(0, 10))
 
@@ -212,47 +241,26 @@ lbl_out = ctk.CTkLabel(content_container, text="FINAL OUTPUT (CLEAN / ROMANIZED)
 lbl_out.grid(row=0, column=1, sticky="w", padx=2, pady=(0, 10))
 
 # Dual text editors
-# Area input dan output teks
-input_box = ctk.CTkTextbox(
-    content_container, font=FONT_CODE, fg_color=COLOR_CARD, text_color="#FFFFFF", 
-    corner_radius=12, border_width=1, border_color="#333336", activate_scrollbars=True
-)
+input_box = ctk.CTkTextbox(content_container, font=FONT_CODE, fg_color=COLOR_CARD, text_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#333336", activate_scrollbars=True)
 input_box.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=0)
 
-output_box = ctk.CTkTextbox(
-    content_container, font=FONT_CODE, fg_color=COLOR_CARD, text_color="#FFFFFF", 
-    corner_radius=12, border_width=1, border_color="#333336", activate_scrollbars=True
-)
+output_box = ctk.CTkTextbox(content_container, font=FONT_CODE, fg_color=COLOR_CARD, text_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#333336", activate_scrollbars=True)
 output_box.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=0)
 
-# Bottom action controls bar (English Interface)
-# Barisan tombol di bagian bawah
+# Bottom action controls bar
 btn_frame = ctk.CTkFrame(main_frame, fg_color=COLOR_BG, corner_radius=0)
 btn_frame.pack(fill=tk.X, padx=24, pady=(10, 20))
 
-btn_convert = ctk.CTkButton(
-    btn_frame, text="Process & Romanize", command=process_lyrics, 
-    font=FONT_BTN, fg_color="#0A84FF", hover_color="#0066CC", text_color="white",
-    corner_radius=10, height=48, width=190
-)
+btn_convert = ctk.CTkButton(btn_frame, text="Process & Romanize", command=process_lyrics, font=FONT_BTN, fg_color="#0A84FF", hover_color="#0066CC", text_color="white", corner_radius=10, height=48, width=190)
 btn_convert.pack(side=tk.LEFT, padx=(0, 12))
 
-btn_copy = ctk.CTkButton(
-    btn_frame, text="Copy Final Result", command=copy_to_clipboard, 
-    font=FONT_BTN, fg_color="#30D158", hover_color="#24A143", text_color="white",
-    corner_radius=10, height=48, width=190
-)
+btn_copy = ctk.CTkButton(btn_frame, text="Copy Final Result", command=copy_to_clipboard, font=FONT_BTN, fg_color="#30D158", hover_color="#24A143", text_color="white", corner_radius=10, height=48, width=190)
 btn_copy.pack(side=tk.LEFT)
 
-btn_clear = ctk.CTkButton(
-    btn_frame, text="Clear All", command=clear_all, 
-    font=FONT_BTN, fg_color="#FF453A", hover_color="#D70015", text_color="white",
-    corner_radius=10, height=48, width=130
-)
+btn_clear = ctk.CTkButton(btn_frame, text="Clear All", command=clear_all, font=FONT_BTN, fg_color="#FF453A", hover_color="#D70015", text_color="white", corner_radius=10, height=48, width=130)
 btn_clear.pack(side=tk.RIGHT)
 
 # Bottom status bar indicator
-# Baris status sistem
 status_frame = ctk.CTkFrame(root, fg_color=COLOR_HEADER, corner_radius=0, height=38)
 status_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
