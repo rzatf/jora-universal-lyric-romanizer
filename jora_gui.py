@@ -210,18 +210,26 @@ subtitle_label = ctk.CTkLabel(header_frame, text="Universal JSON Unescaper & Rom
 subtitle_label.pack(side=tk.LEFT, pady=(22, 16))
 
 # Search Bar Panel
-search_frame = ctk.CTkFrame(root, fg_color="#1E1E20", corner_radius=10, height=50)
-search_frame.pack(fill=tk.X, padx=24, pady=(12, 0))
+search_frame = ctk.CTkFrame(root, fg_color="#141414", corner_radius=10)
+search_frame.pack(fill=tk.X, padx=24, pady=(13, 0))
 
-entry_track = ctk.CTkEntry(search_frame, placeholder_text="Track Title (e.g. Night Dancer)", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
-entry_track.pack(side=tk.LEFT, padx=(12, 8), pady=8)
+search_top_frame = ctk.CTkFrame(search_frame, fg_color="transparent")
+search_top_frame.pack(fill=tk.X, padx=12, pady=(8, 2))
 
-entry_artist = ctk.CTkEntry(search_frame, placeholder_text="Artist Name (e.g. imase) [Optional]", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
-entry_artist.pack(side=tk.LEFT, padx=(0, 12), pady=8)
+entry_track = ctk.CTkEntry(search_top_frame, placeholder_text="Track Title", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
+entry_track.pack(side=tk.LEFT, padx=(0, 8))
 
-btn_search = ctk.CTkButton(search_frame, text="🔍 Fetch Lyrics", command=search_lyrics, font=FONT_BTN, fg_color="#BF5AF2", hover_color="#A239D4", text_color="white", height=36, width=130, corner_radius=8)
-btn_search.pack(side=tk.LEFT, pady=8)
+entry_artist = ctk.CTkEntry(search_top_frame, placeholder_text="Artist Name [Optional]", font=FONT_BTN, width=280, height=36, fg_color=COLOR_CARD)
+entry_artist.pack(side=tk.LEFT, padx=(0, 8))
 
+btn_search = ctk.CTkButton(search_top_frame, text="Fetch Lyrics", command=search_lyrics, font=FONT_BTN, fg_color="#BF5AF2", hover_color="#A239D4", text_color="white", height=36, width=130, corner_radius=8)
+btn_search.pack(side=tk.RIGHT)
+
+search_bottom_frame = ctk.CTkFrame(search_frame, fg_color="transparent")
+search_bottom_frame.pack(fill=tk.X, padx=12, pady=(0, 6))
+
+lbl_info = ctk.CTkLabel(search_bottom_frame, text="* Powered by LRCLIB API", font=FONT_SUBTITLE, text_color=COLOR_TEXT_MUTED)
+lbl_info.pack(side=tk.LEFT, padx=(2, 0))
 # Main layout grid container
 main_frame = ctk.CTkFrame(root, fg_color=COLOR_BG, corner_radius=0)
 main_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
